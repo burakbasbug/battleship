@@ -6,10 +6,10 @@ CFLAGS=-Wall -g -std=c99 -pedantic $(DEFS)
 
 all: server client
 
-server: server.o common.o
+server: server.o #common.o
 	$(CC) $^ -o $@
 
-client: client.o common.o
+client: client.o #common.o
 	$(CC) $^ -o $@
 
 %.o: %.c
