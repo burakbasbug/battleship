@@ -4,15 +4,12 @@ CFLAGS=-Wall -g -std=c99 -pedantic $(DEFS)
 
 .PHONY: all clean
 
-all: server #client
+all: server client
 
-server: server.o
+server: server.o common.o
 	$(CC) $^ -o $@
 
-servert: server.template.o
-	$(CC) $^ -o $@	
-
-client: client.o
+client: client.o common.o
 	$(CC) $^ -o $@
 
 %.o: %.c
@@ -20,3 +17,4 @@ client: client.o
 
 clean:
 	rm -f *.o client server
+	rm -f client.o server.o common.o
