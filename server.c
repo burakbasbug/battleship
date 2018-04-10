@@ -1,12 +1,3 @@
-/**
- * @file server.c
- * @author OSUE Team <osue-team@cps.tuwien.ac.at>
- * @date 2018-03-02
- *
- * @brief Server for OSUE exercise 1B `Battleship'.
- */
-
-// IO, C standard library, POSIX API, data types:
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -40,28 +31,22 @@ static struct addrinfo *ai = NULL;      // stores address information
 static int sockfd = -1;                 // socket file descriptor
 static int connfd = -1;                 // connection file descriptor
 
-/* TODO
- * You might want to add further static variables here, for instance to save
- * the program name (argv[0]) since you should include it in all messages.
- *
- * You should also have some kind of a list which saves information about your
- * ships. For this purpose you might want to define a struct. Bear in mind that
- * your server must keep record about which ships have been hit (and also where
- * they have been hit) in order to know when a ship was sunk.
- *
- * You might also find it convenient to add a few functions, for instance:
- *  - a function which cleans up all resources and exits the program
- *  - a function which parses the arguments from the command line
- *  - a function which adds a new ship to your list of ships
- *  - a function which checks whether a client's shot hit any of your ships
- */
+static char* serverName = NULL;
+static const char* OPTSTRING = "p:";
+static int gameRound = 0;
+#define MAX_GAME_ROUND 80;
+
+void parseArgs(int argc, char *argv[]);
 
 int main(int argc, char *argv[])
 {
     /* TODO
      * Add code to parse the command line arguments, maybe as a separate
      * function.
+     * 
+     * server [-p PORT] SHIP1 ...
      */
+    parseArgs(argc, argv);
 
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
@@ -103,19 +88,62 @@ int main(int argc, char *argv[])
     /* TODO
      * Here you might want to add variables to keep track of the game status,
      * for instance the number of rounds that have been played.
-     */
+     *
 
-    while (0) {
-        /* TODO
+    while (...) {
+        * TODO
          * add code to:
          *  - wait for a request from the client
          *  - check for a parity error or invalid coordinates in the request
          *  - check whether a ship was hit and determine the status to return
          *  - send an according response to the client
          */
+        return EXIT_SUCCESS;
     }
 
     /* TODO
      * cleanup
      */
+
+    void parseArgs(int argc, char *argv[])
+    {
+        int opt_p = 0;
+        char *localPort = NULL;
+        for (int i = 1; i < argc; i++)
+        {
+            int opt;
+            while ((opt = getopt(argc, argv, OPTSTRING)) != -1)
+            {
+                switch (opt)
+                {
+                case 'p':
+                    opt_p++;
+                    if(opt_p > 1){
+                        //usage();
+                        return EXIT_FAILURE;
+                    }
+                    size_t s = strlen(argv[i]);
+                    localPort = malloc(s * sizeof(char));
+                    strncpy(localPort, argv[i], s);
+                    break;
+                default:
+                    //usage();
+                    return EXIT_FAILURE;
+                }
+            }
+
+            if (opt == -1 && p[0] != '-')
+            {
+
+                printf("Arg%d: %s\n", i, argv[i]);
+                if ((i + 1) < argc)
+                {
+                    optind = i + 1;
+                }
+            }
+        }    
+    }
+
+
 }
+
