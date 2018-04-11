@@ -37,15 +37,21 @@ static char *port = DEFAULT_PORT; // the port to bind to
 static char *host = DEFAULT_HOST; // the host to bind to
 static char* prog_name;
 void usage(void);
+void cleanUp(void);
 void parseArgs(int argc, char* argv[], const char* optstring);
 
 int main(int argc, char *argv[])
 {
     parseArgs(argc, argv, OPT_STR);
+    cleanUp();
+    return EXIT_SUCCESS;
+}
+
+void cleanUp(void)
+{
     prog_name = NULL;
     port = NULL;
     host = NULL;
-    return EXIT_SUCCESS;
 }
 
 void parseArgs(int argc, char* argv[], const char* optstring){

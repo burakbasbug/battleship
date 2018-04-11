@@ -40,37 +40,58 @@ static struct addrinfo *ai = NULL;      // stores address information
 static int sockfd = -1;                 // socket file descriptor
 static int connfd = -1;                 // connection file descriptor
 
-/* TODO
- * You might want to add further static variables here, for instance to save
- * the program name (argv[0]) since you should include it in all messages.
- *
- * You should also have some kind of a list which saves information about your
- * ships. For this purpose you might want to define a struct. Bear in mind that
- * your server must keep record about which ships have been hit (and also where
- * they have been hit) in order to know when a ship was sunk.
- *
- * You might also find it convenient to add a few functions, for instance:
- *  - a function which cleans up all resources and exits the program
- *  - a function which parses the arguments from the command line
- *  - a function which adds a new ship to your list of ships
- *  - a function which checks whether a client's shot hit any of your ships
+/*
+ * TODO You should also have some kind of a list which saves information
+ * about your ships. For this purpose you might want to define a struct. Bear
+ * in mind that your server must keep record about which ships have been hit
+ * (and also where they have been hit) in order to know when a ship was sunk.
+ * 
+ * You might also find it convenient to add a few functions, for instance: - a
+ * function which cleans up all resources and exits the program - a function
+ * which parses the arguments from the command line - a function which adds a
+ * new ship to your list of ships - a function which checks whether a
+ * client's shot hit any of your ships
  */
 
-#define OPT_STR "p:"
-static char* prog_name;
+// Prototypes
 void usage(void);
-void parseArgs(int argc, char* argv[], const char* optstring);
+void invalidShip(char *givenShip);
+void cleanUp(void);
+void parseArgs(int argc, char *argv[], const char *optstring);
+int getIntBetweenAandJ(char c);
+int digitCharToInt(char c);
+#define OPT_STR "p:"
+static char *prog_name;
+struct shipdata
+{
+    int x;
+    int y;
+    int status;
+};
+
+struct shipsType2
+{
+    struct shipdata d[SHIP_CNT_LEN2];
+};
+
+struct shipsType3
+{
+    struct shipdata d[SHIP_CNT_LEN3];
+};
+
+struct shipsType4
+{
+    struct shipdata d[SHIP_CNT_LEN4];
+};
 
 int main(int argc, char *argv[])
 {
-    /* TODO
-     * Add code to parse the command line arguments, maybe as a separate
-     * function.
-     */
-
     parseArgs(argc, argv, OPT_STR);
-    prog_name = NULL;
-    port = NULL;
+    uint8_t map[MAP_SIZE][MAP_SIZE];
+    memset(&map, SQUARE_UNKNOWN, sizeof(map));
+    print_map(map);
+
+    cleanUp();
     return EXIT_SUCCESS;
 
     struct addrinfo hints;
@@ -80,68 +101,78 @@ int main(int argc, char *argv[])
     hints.ai_flags = AI_PASSIVE;
 
     int res = getaddrinfo(NULL, port, &hints, &ai);
-    /* TODO
-     * check for errors
-     */
+    /*
+	 * TODO check for errors
+	 */
 
     sockfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-    /* TODO
-     * check for errors
-     */
+    /*
+	 * TODO check for errors
+	 */
 
     int val = 1;
     res = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof val);
-    /* TODO
-     * check for errors
-     */
+    /*
+	 * TODO check for errors
+	 */
 
     res = bind(sockfd, ai->ai_addr, ai->ai_addrlen);
-    /* TODO
-     * check for errors
-     */
+    /*
+	 * TODO check for errors
+	 */
 
     res = listen(sockfd, 1);
-    /* TODO
-     * check for errors
-     */
+    /*
+	 * TODO check for errors
+	 */
 
     connfd = accept(sockfd, NULL, NULL);
-    /* TODO
-     * check for errors
-     */
+    /*
+	 * TODO check for errors
+	 */
 
-    /* TODO
-     * Here you might want to add variables to keep track of the game status,
-     * for instance the number of rounds that have been played.
-     */
+    /*
+	 * TODO Here you might want to add variables to keep track of the
+	 * game status, for instance the number of rounds that have been
+	 * played.
+	 */
+    printf("res%d.", res);
+    for (int roundNr = 0; roundNr < MAX_ROUNDS; roundNr++)
+    {
+        printf("r%d ", roundNr);
+        /*
+		 * TODO add code to: - wait for a request from the client -
+		 * check for a parity error or invalid coordinates in the
+		 * request - check whether a ship was hit and determine the
+		 * status to return - send an according response to the
+		 * client
+		 */
+    }
 
-    //while (0) {
-        /* TODO
-         * add code to:
-         *  - wait for a request from the client
-         *  - check for a parity error or invalid coordinates in the request
-         *  - check whether a ship was hit and determine the status to return
-         *  - send an according response to the client
-         */
-    //}
-
-    /* TODO
-     * cleanup
-     */
-    prog_name = NULL;
+    /*
+	 * TODO cleanup
+	 */
+    cleanUp();
     return EXIT_SUCCESS;
 }
 
-void parseArgs(int argc, char* argv[], const char* optstring){
+void cleanUp(void)
+{
+    prog_name = NULL;
+    port = NULL;
+    //empty MAP;
+}
+
+void parseArgs(int argc, char *argv[], const char *optstring)
+{
     int localOpt_p = 0;
     prog_name = argv[0];
-    if(argc == 1){
+    if (argc == 1)
+    {
         usage();
     }
-
-    for (int i = 1; i < argc; i++)
+    for (int argmntIndex = 1; argmntIndex < argc; argmntIndex++)
     {
-        //printf("Iteration%i: ",i);
         int opt;
         while ((opt = getopt(argc, argv, optstring)) != -1)
         {
@@ -149,7 +180,8 @@ void parseArgs(int argc, char* argv[], const char* optstring){
             {
             case 'p':
                 localOpt_p++;
-                if(localOpt_p > 1){
+                if (localOpt_p > 1)
+                {
                     usage();
                 }
                 port = optarg;
@@ -159,9 +191,42 @@ void parseArgs(int argc, char* argv[], const char* optstring){
             }
         }
 
-        if(optind == i){
-            printf("Ship: %s\n", argv[optind]);
+        if (optind == argmntIndex)
+        {
+            char *ship = argv[argmntIndex];
+            printf("Ship: %s\n", ship);
+
+            size_t arglen = strnlen(ship, 5);
+            if (arglen != 4)
+            {
+                invalidShip(ship);
+            }
+            //Bow(front)
+            int x1;
+            if ((x1 = getIntBetweenAandJ(ship[0])) != -1)
+            {
+                int y1 = digitCharToInt(ship[1]);
+                printf("Bow: x=%d , y=%d - ", x1, y1);
+            }
+            else
+            {
+                invalidShip(ship);
+            }
+
+            //Stern(back)
+            int x2;
+            if ((x2 = getIntBetweenAandJ(ship[2])) != -1)
+            {
+                int y2 = digitCharToInt(ship[3]);
+                printf("Stern: x=%d , y=%d - ", x2, y2);
+            }
+            else
+            {
+                invalidShip(ship);
+            }
+
             optind++;
+            //Son satir olmali ! like getopt does
         }
     }
     printf("SERVER port: %s\n", port);
@@ -173,28 +238,47 @@ void usage(void)
     exit(EXIT_FAILURE);
 }
 
-/*
-har *a_arg = NULL; int opt_o = 0;
-int c;
-while ( (c = getopt(argc, argv, "a:o")) != -1 ){
-switch ( c ) {
-case ’a’: a_arg = optarg;
-break;
-case ’o’: opt_o++;
-break;
-case ’?’: // invalid option
-break; }
+void invalidShip(char *givenShip)
+{
+    fprintf(stderr, "Invalid ship: %s\n", givenShip);
+    usage();
 }
-if ( a_arg == NULL )
-// option ’a’ did not occur
-if ( opt_o > 1 )
-// option ’o’ occurs more than once
-if ( opt_o != 1 )
-// option ’o’ does not occur exactly once
 
+//returns index number of given letter for the x - axis of game board.
+int getIntBetweenAandJ(char c)
+{
+    int x = -1;
+    for (x = 0; x < MAP_SIZE; x++)
+    {
+        if ((x + 'A') == c)
+        {
+            return x;
+        }
+    }
+    return -1;
+}
 
-usage
+int digitCharToInt(char c)
+{
+    int x = -1;
+    for (x = 0; x < MAP_SIZE; x++)
+    {
+        if ((x + '0') == c)
+        {
+            return x;
+        }
+    }
+    return -1;
+}
 
-
-memset s35
-*/
+/*
+	 * Notes: - NULL for static pointers? -
+	 * 
+	 * Next: - Tüm assignment süper detayli okunacak. Sonra karar-> -
+	 * initMap() Acaba struct ile map yapmak yerine map[][] mi yapmali?
+	 * Cünkü printing function öyle calisiyor. Eger öyle ise "For
+	 * this purpose you might want to define a struct." ne icin denmis? -
+	 * Acaba gemileri mi diyor? => Her bir gemi tipi/HER GEMI icin bir
+	 * struct yapip icine (tanimlandiysa) koordinatlarini atmaca mesela?
+	 * - Eger map[][] yapilacaksa init de memset ile yapilabilir
+	 */
