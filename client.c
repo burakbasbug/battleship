@@ -32,6 +32,10 @@
 // stuff shared by client and server:
 #include "common.h"
 
+static struct addrinfo *ai = NULL;      // stores address information
+static int sockfd = -1;                 // connection file descriptor
+
+
 #define OPT_STR "p:h:"
 static char *port = DEFAULT_PORT; // the port to bind to
 static char *host = DEFAULT_HOST; // the host to bind to
@@ -43,6 +47,48 @@ void parseArgs(int argc, char* argv[], const char* optstring);
 int main(int argc, char *argv[])
 {
     parseArgs(argc, argv, OPT_STR);
+
+
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    int res = getaddrinfo(host, port, &hints, &ai);
+	if(res != 0){
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(res));
+		return EXIT_FAILURE;
+	}
+
+    sockfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+    if(sockfd < 0){
+		fprintf(stderr, "socket: %s\n", strerror(errno));
+		return EXIT_FAILURE;
+	}
+	printf("CONNECTED TO SERVER!\n");
+    if(connect(sockfd, ai->ai_addr, ai->ai_addrlen) < 0){
+        fprintf(stderr, "connect: %s\n", strerror(errno));
+		return EXIT_FAILURE;
+    }
+
+    while(1){
+        char buf[20] = "Hola server!";
+        if (send(sockfd, buf, sizeof(buf), 0) == -1){
+            fprintf(stderr, "send: %s\n", strerror(errno));
+            return EXIT_FAILURE;
+        }
+
+        if(recv(sockfd, buf,sizeof(buf),MSG_WAITALL) == -1){
+            fprintf(stderr, "recv: (%d) %s\n", errno, strerror(errno));
+            return EXIT_FAILURE;
+        }
+        printf("\tServer: %s\n", buf);
+
+
+        break;
+    }   
+    
+    
     cleanUp();
     return EXIT_SUCCESS;
 }
@@ -52,6 +98,12 @@ void cleanUp(void)
     prog_name = NULL;
     port = NULL;
     host = NULL;
+
+    freeaddrinfo(ai);
+    if(close(sockfd) < 0){ //her connection icin OS'in sagladigi kaynak
+		fprintf(stderr, "close failed: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 }
 
 void parseArgs(int argc, char* argv[], const char* optstring){
@@ -85,7 +137,7 @@ void parseArgs(int argc, char* argv[], const char* optstring){
     {
         usage();
     }
-    printf("CLIENT hostname: %s, port: %s\n", host, port);
+    printf("hostname: %s, port: %s\n", host, port);
 }
 
 void usage(void)

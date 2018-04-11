@@ -57,113 +57,89 @@ static int connfd = -1;                 // connection file descriptor
 void usage(void);
 void invalidShip(char *givenShip);
 void cleanUp(void);
-void parseArgs(int argc, char *argv[], const char *optstring);
+void parseArgsAndCreateShips(int argc, char *argv[], const char *optstring);
 int getIntBetweenAandJ(char c);
 int digitCharToInt(char c);
+int prepareSocketAndGetConnfd(void);
+void sighandler(int signum);
 #define OPT_STR "p:"
 static char *prog_name;
-struct shipdata
-{
-    int x;
-    int y;
-    int status;
-};
-
-struct shipsType2
-{
-    struct shipdata d[SHIP_CNT_LEN2];
-};
-
-struct shipsType3
-{
-    struct shipdata d[SHIP_CNT_LEN3];
-};
-
-struct shipsType4
-{
-    struct shipdata d[SHIP_CNT_LEN4];
-};
 
 int main(int argc, char *argv[])
 {
-    parseArgs(argc, argv, OPT_STR);
+	signal(SIGINT, sighandler);
+	signal(SIGTERM, sighandler);
+
+    parseArgsAndCreateShips(argc, argv, OPT_STR);
     uint8_t map[MAP_SIZE][MAP_SIZE];
     memset(&map, SQUARE_UNKNOWN, sizeof(map));
     print_map(map);
 
-    cleanUp();
-    return EXIT_SUCCESS;
+	connfd = prepareSocketAndGetConnfd();
+	if(connfd < 0){
+		return EXIT_FAILURE;
+	}
+	printf("GAME IS STARTING...\n");
 
-    struct addrinfo hints;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE;
-
-    int res = getaddrinfo(NULL, port, &hints, &ai);
-    /*
-	 * TODO check for errors
-	 */
-
-    sockfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-    /*
-	 * TODO check for errors
-	 */
-
-    int val = 1;
-    res = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof val);
-    /*
-	 * TODO check for errors
-	 */
-
-    res = bind(sockfd, ai->ai_addr, ai->ai_addrlen);
-    /*
-	 * TODO check for errors
-	 */
-
-    res = listen(sockfd, 1);
-    /*
-	 * TODO check for errors
-	 */
-
-    connfd = accept(sockfd, NULL, NULL);
-    /*
-	 * TODO check for errors
-	 */
-
-    /*
-	 * TODO Here you might want to add variables to keep track of the
-	 * game status, for instance the number of rounds that have been
-	 * played.
-	 */
-    printf("res%d.", res);
-    for (int roundNr = 0; roundNr < MAX_ROUNDS; roundNr++)
+    for (int roundNr = 1; roundNr <= MAX_ROUNDS; roundNr++)
     {
-        printf("r%d ", roundNr);
+		
         /*
-		 * TODO add code to: - wait for a request from the client -
+		 * TODO add code to: 
+		 * - wait for a request from the client -
 		 * check for a parity error or invalid coordinates in the
-		 * request - check whether a ship was hit and determine the
-		 * status to return - send an according response to the
+		 * request 
+		 * - check whether a ship was hit and determine the
+		 * status to return 
+		 * - send an according response to the
 		 * client
 		 */
+		char buf[20];
+		if(recv(connfd, buf,sizeof(buf),MSG_WAITALL) == -1){
+			fprintf(stderr, "recv: (%d) %s\n", errno, strerror(errno));
+			return EXIT_FAILURE;
+		}
+		printf("\t(%d)Client: %s\n", roundNr, buf);
+
+		if (send(connfd, "Hola client!", 20, 0) == -1){
+			fprintf(stderr, "send: %s\n", strerror(errno));
+			return EXIT_FAILURE;
+		}
+
+
+		break;
     }
 
-    /*
-	 * TODO cleanup
-	 */
+	printf("Game LOST.\n");
     cleanUp();
     return EXIT_SUCCESS;
 }
 
 void cleanUp(void)
 {
+	freeaddrinfo(ai);
+	if(connfd != -1 && close(connfd) < 0){ //Her bir connection icin olusturulan fd
+		fprintf(stderr, "close failed: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	if(sockfd != -1 && close(sockfd) < 0){ //her connection icin OS'in sagladigi kaynak
+		fprintf(stderr, "close failed: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
     prog_name = NULL;
     port = NULL;
     //empty MAP;
 }
 
-void parseArgs(int argc, char *argv[], const char *optstring)
+void sighandler(int signum) {
+   printf("Caught signal %d!\n", signum);
+   cleanUp();
+   exit(EXIT_SUCCESS);
+}
+
+void parseArgsAndCreateShips(int argc, char *argv[], const char *optstring)
 {
     int localOpt_p = 0;
     prog_name = argv[0];
@@ -199,34 +175,60 @@ void parseArgs(int argc, char *argv[], const char *optstring)
             size_t arglen = strnlen(ship, 5);
             if (arglen != 4)
             {
-                invalidShip(ship);
+                fprintf(stderr, "ERROR: wrong syntax for ship coordinates: %s\n", ship);
+				cleanUp();
+				exit(EXIT_FAILURE);
             }
             //Bow(front)
             int x1;
             if ((x1 = getIntBetweenAandJ(ship[0])) != -1)
             {
-                int y1 = digitCharToInt(ship[1]);
-                printf("Bow: x=%d , y=%d - ", x1, y1);
+                //x1 tanimlandi
             }
-            else
-            {
-                invalidShip(ship);
-            }
+			else
+			{
+				fprintf(stderr, "ERROR: coordinates outside of map: %s\n", ship);
+				cleanUp();
+				exit(EXIT_FAILURE);
+			}
+
+			int y1;
+			if((y1 = digitCharToInt(ship[1])) != -1){
+				//y1 tanimlandi.
+			}
+			else
+			{
+				fprintf(stderr, "ERROR: coordinates outside of map: %s\n", ship);
+				cleanUp();
+				exit(EXIT_FAILURE);
+			}
+			
 
             //Stern(back)
             int x2;
             if ((x2 = getIntBetweenAandJ(ship[2])) != -1)
             {
-                int y2 = digitCharToInt(ship[3]);
-                printf("Stern: x=%d , y=%d - ", x2, y2);
+                //x2 tanimlandi
             }
-            else
-            {
-                invalidShip(ship);
-            }
+			else
+			{
+				fprintf(stderr, "ERROR: coordinates outside of map: %s\n", ship);
+				cleanUp();
+				exit(EXIT_FAILURE);
+			}
+
+			int y2;
+			if((y2 = digitCharToInt(ship[3])) != -1){
+				//y1 tanimlandi.
+			}
+			else
+			{
+				fprintf(stderr, "ERROR: coordinates outside of map: %s\n", ship);
+				cleanUp();
+				exit(EXIT_FAILURE);
+			}
 
             optind++;
-            //Son satir olmali ! like getopt does
         }
     }
     printf("SERVER port: %s\n", port);
@@ -244,7 +246,7 @@ void invalidShip(char *givenShip)
     usage();
 }
 
-//returns index number of given letter for the x - axis of game board.
+//char A - MAP_SIZE arasindaysa sayisi, diger her sey icin -1
 int getIntBetweenAandJ(char c)
 {
     int x = -1;
@@ -255,9 +257,10 @@ int getIntBetweenAandJ(char c)
             return x;
         }
     }
-    return -1;
+	return -1;
 }
 
+//char 0-MAP_SIZE arasindaysa sayisi, diger her sey icin -1
 int digitCharToInt(char c)
 {
     int x = -1;
@@ -269,6 +272,76 @@ int digitCharToInt(char c)
         }
     }
     return -1;
+}
+
+struct shipdata
+{
+    int x;
+    int y;
+    int status;
+};
+
+struct shipsType2
+{
+    struct shipdata d[SHIP_CNT_LEN2];
+};
+
+struct shipsType3
+{
+    struct shipdata d[SHIP_CNT_LEN3];
+};
+
+struct shipsType4
+{
+    struct shipdata d[SHIP_CNT_LEN4];
+};
+
+int prepareSocketAndGetConnfd(void) {
+
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    int res = getaddrinfo(NULL, port, &hints, &ai);
+	if(res != 0){
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(res));
+		return -1;
+	}
+
+    sockfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+    if(sockfd < 0){
+		fprintf(stderr, "socket: %s\n", strerror(errno));
+		return -1;
+	}
+
+    int val = 1;
+    res = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof val);
+    if(res < 0){
+		fprintf(stderr, "setsockopt: %s\n", strerror(errno));
+		return -1;
+	}
+
+    res = bind(sockfd, ai->ai_addr, ai->ai_addrlen);
+    if(res < 0){
+		fprintf(stderr, "bind: %s\n", strerror(errno));
+		return -1;
+	}
+
+    res = listen(sockfd, 1);
+    if(res < 0){
+		fprintf(stderr, "listen: %s\n", strerror(errno));
+		return -1;
+	}
+
+	printf("SERVER IS WAITING FOR CLIENT.\n");
+    int localConnfd = accept(sockfd, NULL, NULL);
+    if(localConnfd < 0){
+		fprintf(stderr, "accept: %s\n", strerror(errno));
+		return -1;
+	}
+	return localConnfd;
 }
 
 /*
