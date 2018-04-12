@@ -32,22 +32,23 @@
 // stuff shared by client and server:
 #include "common.h"
 
-static struct addrinfo *ai = NULL;      // stores address information
-static int sockfd = -1;                 // connection file descriptor
+static struct addrinfo *ai = NULL; // stores address information
+static int sockfd = -1;            // connection file descriptor
 
 static char *port = DEFAULT_PORT; // the port to bind to
 static char *host = DEFAULT_HOST; // the host to bind to
-static char* prog_name;
+static char *prog_name;
 #define OPT_STR "p:h:"
 
 static void usage(void);
 static void cleanUp(void);
-static void parseArgs(int argc, char* argv[], const char* optstring);
+static void parseArgs(int argc, char *argv[], const char *optstring);
+static uint16_t makeGuess(void);
+static void sendGuess(uint16_t guess);
 
 int main(int argc, char *argv[])
 {
     parseArgs(argc, argv, OPT_STR);
-
 
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
@@ -55,35 +56,77 @@ int main(int argc, char *argv[])
     hints.ai_socktype = SOCK_STREAM;
 
     int res = getaddrinfo(host, port, &hints, &ai);
-	if(res != 0){
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(res));
-		return EXIT_FAILURE;
-	}
-
-    sockfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-    if(sockfd < 0){
-		fprintf(stderr, "socket: %s\n", strerror(errno));
-		return EXIT_FAILURE;
-	}
-	printf("CONNECTED TO SERVER!\n");
-    if(connect(sockfd, ai->ai_addr, ai->ai_addrlen) < 0){
-        fprintf(stderr, "connect: %s\n", strerror(errno));
-		return EXIT_FAILURE;
+    if (res != 0)
+    {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(res));
+        return EXIT_FAILURE;
     }
 
-    while(1){
-        
+    sockfd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+    if (sockfd < 0)
+    {
+        fprintf(stderr, "socket: %s\n", strerror(errno));
+        return EXIT_FAILURE;
+    }
+    printf("CONNECTED TO SERVER!\n");
+    if (connect(sockfd, ai->ai_addr, ai->ai_addrlen) < 0)
+    {
+        fprintf(stderr, "connect: %s\n", strerror(errno));
+        return EXIT_FAILURE;
+    }
 
-        
+    while (1)
+    {
+
         //buf[pos] = msg >> (8 * 2);
         //send(sockfd, buf, sizeof(uint16_t), 0);
+        sendGuess(makeGuess());
         
+
         break;
-    }   
-    
-    
+    }
+
     cleanUp();
     return EXIT_SUCCESS;
+}
+
+static void sendGuess(uint16_t guess){
+    uint16_t buf[1]; //1 tane 8bitlik sayi alan buffer (16 bit 2ye bölünecek)
+    // Guess su an 16 bit, 8 8 ikiye ayirip önce ilk kismi sonra ikinci kismi.
+    uint8_t first8bits = 0x0 | guess; // 0000 0000
+    buf[0] = first8bits;
+    if(send(sockfd, buf, sizeof(uint8_t), 0) < 0){
+        fprintf(stderr, "send failed: %s\n", strerror(errno));
+    }
+    
+    
+    // paritybit 0 0 0 x(6 bits) y(6 bits)
+    uint16_t parityBit = guess & 1; //reading the first bit.
+    int counterFor1s = parityBit;
+    for(int i = 1; i<16; i++){
+        counterFor1s += ( (guess >> i) & 1);
+        parityBit = parityBit ^ ( (guess >> i) & 1);
+    }
+    //printf("Parity Bit will be: %s, because number of 1s in %d is %d.\n", parityBit%2 == 0 ? "0" : "1", guess, counterFor1s);
+    uint8_t second8bitsWithParity = 0xFF & (guess >> 8);
+    printf("second part: %d\n", second8bitsWithParity);
+    buf[0] = second8bitsWithParity;
+    if(send(sockfd, buf, sizeof(uint8_t), 0) < 0){
+        fprintf(stderr, "send failed: %s\n", strerror(errno));
+    }
+}
+
+static uint16_t makeGuess(void)
+{
+    //empty bits
+    uint16_t guess = 0x0;
+    uint16_t x = 4; // B
+
+    //first 6 bits empty, next 6 bits x
+    guess = guess | (x << 6);
+    uint16_t y = 1;
+    guess = guess | y;
+    return guess;
 }
 
 static void cleanUp(void)
@@ -93,13 +136,15 @@ static void cleanUp(void)
     host = NULL;
 
     freeaddrinfo(ai);
-    if(close(sockfd) >= 0){ //her connection icin OS'in sagladigi kaynak
-		fprintf(stderr, "close failed: %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
+    if (sockfd >= 0 && close(sockfd) < 0)
+    { //her connection icin OS'in sagladigi kaynak
+        fprintf(stderr, "close failed: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
 }
 
-static void parseArgs(int argc, char* argv[], const char* optstring){
+static void parseArgs(int argc, char *argv[], const char *optstring)
+{
     int localOpt_p = 0, localOpt_h = 0;
     prog_name = argv[0];
 
@@ -110,14 +155,16 @@ static void parseArgs(int argc, char* argv[], const char* optstring){
         {
         case 'p':
             localOpt_p++;
-            if(localOpt_p > 1){
+            if (localOpt_p > 1)
+            {
                 usage();
             }
             port = optarg;
             break;
         case 'h':
             localOpt_h++;
-            if(localOpt_h > 1){
+            if (localOpt_h > 1)
+            {
                 usage();
             }
             host = optarg;
@@ -126,7 +173,7 @@ static void parseArgs(int argc, char* argv[], const char* optstring){
             usage();
         }
     }
-    if((argc - optind) > 0)
+    if ((argc - optind) > 0)
     {
         usage();
     }

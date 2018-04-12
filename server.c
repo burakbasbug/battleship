@@ -55,7 +55,6 @@ static int connfd = -1;                 // connection file descriptor
 
 // Prototypes
 static void usage(void);
-static void invalidShip(char *givenShip);
 static void cleanUp(void);
 static void parseArgsAndCreateShips(int argc, char *argv[], const char *optstring);
 static int getIntBetweenAandJ(char c);
@@ -81,8 +80,8 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 	printf("GAME IS STARTING...\n");
-
-    for (int roundNr = 1; roundNr <= MAX_ROUNDS; roundNr++)
+//1 yap
+    for (int roundNr = 78; roundNr <= MAX_ROUNDS; roundNr++)
     {
 		
         /*
@@ -95,12 +94,16 @@ int main(int argc, char *argv[])
 		 * - send an according response to the
 		 * client
 		 */
-		//fixed width types: https://os.mbed.com/handbook/C-Data-Types
+		//
+		uint8_t buf[1]; //fixed width int type: char (unsigned), 8 bit
+		if((recv(connfd, buf, sizeof(uint8_t), MSG_WAITALL) ) < 0){
+			printf("sth wrong\n");
+		}
+		uint8_t firstPart = buf[0];
+		printf("\tMSG: x: %x, d: %d\n", firstPart, firstPart);
+
+
 		
-
-
-
-		break;
     }
 
 	printf("Game LOST.\n");
@@ -195,12 +198,6 @@ static void usage(void)
 {
     fprintf(stderr, "Usage: %s [-p PORT] SHIP1 ...\n", prog_name);
     exit(EXIT_FAILURE);
-}
-
-static void invalidShip(char *givenShip)
-{
-    fprintf(stderr, "Invalid ship: %s\n", givenShip);
-    usage();
 }
 
 //char A - MAP_SIZE arasindaysa sayisi, diger her sey icin -1
