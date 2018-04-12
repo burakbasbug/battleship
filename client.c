@@ -35,14 +35,14 @@
 static struct addrinfo *ai = NULL;      // stores address information
 static int sockfd = -1;                 // connection file descriptor
 
-
-#define OPT_STR "p:h:"
 static char *port = DEFAULT_PORT; // the port to bind to
 static char *host = DEFAULT_HOST; // the host to bind to
 static char* prog_name;
-void usage(void);
-void cleanUp(void);
-void parseArgs(int argc, char* argv[], const char* optstring);
+#define OPT_STR "p:h:"
+
+static void usage(void);
+static void cleanUp(void);
+static void parseArgs(int argc, char* argv[], const char* optstring);
 
 int main(int argc, char *argv[])
 {
@@ -72,19 +72,12 @@ int main(int argc, char *argv[])
     }
 
     while(1){
-        char buf[20] = "Hola server!";
-        if (send(sockfd, buf, sizeof(buf), 0) == -1){
-            fprintf(stderr, "send: %s\n", strerror(errno));
-            return EXIT_FAILURE;
-        }
+        
 
-        if(recv(sockfd, buf,sizeof(buf),MSG_WAITALL) == -1){
-            fprintf(stderr, "recv: (%d) %s\n", errno, strerror(errno));
-            return EXIT_FAILURE;
-        }
-        printf("\tServer: %s\n", buf);
-
-
+        
+        //buf[pos] = msg >> (8 * 2);
+        //send(sockfd, buf, sizeof(uint16_t), 0);
+        
         break;
     }   
     
@@ -93,20 +86,20 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 }
 
-void cleanUp(void)
+static void cleanUp(void)
 {
     prog_name = NULL;
     port = NULL;
     host = NULL;
 
     freeaddrinfo(ai);
-    if(close(sockfd) < 0){ //her connection icin OS'in sagladigi kaynak
+    if(close(sockfd) >= 0){ //her connection icin OS'in sagladigi kaynak
 		fprintf(stderr, "close failed: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 }
 
-void parseArgs(int argc, char* argv[], const char* optstring){
+static void parseArgs(int argc, char* argv[], const char* optstring){
     int localOpt_p = 0, localOpt_h = 0;
     prog_name = argv[0];
 
@@ -140,7 +133,7 @@ void parseArgs(int argc, char* argv[], const char* optstring){
     printf("hostname: %s, port: %s\n", host, port);
 }
 
-void usage(void)
+static void usage(void)
 {
     fprintf(stderr, "Usage: %s [-h HOSTNAME] [-p PORT]\n", prog_name);
     exit(EXIT_FAILURE);

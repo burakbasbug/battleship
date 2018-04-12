@@ -54,14 +54,15 @@ static int connfd = -1;                 // connection file descriptor
  */
 
 // Prototypes
-void usage(void);
-void invalidShip(char *givenShip);
-void cleanUp(void);
-void parseArgsAndCreateShips(int argc, char *argv[], const char *optstring);
-int getIntBetweenAandJ(char c);
-int digitCharToInt(char c);
-int prepareSocketAndGetConnfd(void);
-void sighandler(int signum);
+static void usage(void);
+static void invalidShip(char *givenShip);
+static void cleanUp(void);
+static void parseArgsAndCreateShips(int argc, char *argv[], const char *optstring);
+static int getIntBetweenAandJ(char c);
+static int digitCharToInt(char c);
+static int prepareSocketAndGetConnfd(void);
+static void sighandler(int signum);
+
 #define OPT_STR "p:"
 static char *prog_name;
 
@@ -94,17 +95,9 @@ int main(int argc, char *argv[])
 		 * - send an according response to the
 		 * client
 		 */
-		char buf[20];
-		if(recv(connfd, buf,sizeof(buf),MSG_WAITALL) == -1){
-			fprintf(stderr, "recv: (%d) %s\n", errno, strerror(errno));
-			return EXIT_FAILURE;
-		}
-		printf("\t(%d)Client: %s\n", roundNr, buf);
+		//fixed width types: https://os.mbed.com/handbook/C-Data-Types
+		
 
-		if (send(connfd, "Hola client!", 20, 0) == -1){
-			fprintf(stderr, "send: %s\n", strerror(errno));
-			return EXIT_FAILURE;
-		}
 
 
 		break;
@@ -115,15 +108,15 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
 }
 
-void cleanUp(void)
+static void cleanUp(void)
 {
 	freeaddrinfo(ai);
-	if(connfd != -1 && close(connfd) < 0){ //Her bir connection icin olusturulan fd
+	if(connfd >= 0 && close(connfd) < 0){ //Her bir connection icin olusturulan fd
 		fprintf(stderr, "close failed: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
-	if(sockfd != -1 && close(sockfd) < 0){ //her connection icin OS'in sagladigi kaynak
+	if(sockfd >= 0 && close(sockfd) < 0){ //her connection icin OS'in sagladigi kaynak
 		fprintf(stderr, "close failed: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
@@ -133,13 +126,13 @@ void cleanUp(void)
     //empty MAP;
 }
 
-void sighandler(int signum) {
+static void sighandler(int signum) {
    printf("Caught signal %d!\n", signum);
    cleanUp();
    exit(EXIT_SUCCESS);
 }
 
-void parseArgsAndCreateShips(int argc, char *argv[], const char *optstring)
+static void parseArgsAndCreateShips(int argc, char *argv[], const char *optstring)
 {
     int localOpt_p = 0;
     prog_name = argv[0];
@@ -179,75 +172,39 @@ void parseArgsAndCreateShips(int argc, char *argv[], const char *optstring)
 				cleanUp();
 				exit(EXIT_FAILURE);
             }
+
             //Bow(front)
-            int x1;
-            if ((x1 = getIntBetweenAandJ(ship[0])) != -1)
-            {
-                //x1 tanimlandi
-            }
-			else
+            int x1 = getIntBetweenAandJ(ship[0]);
+			int y1 = digitCharToInt(ship[1]);
+			//Stern(back)
+            int x2 = getIntBetweenAandJ(ship[2]);
+			int y2 = digitCharToInt(ship[3]);
+			if( (x1<0) || (y1<0) || (x2<0) || (y2<0)  )
 			{
 				fprintf(stderr, "ERROR: coordinates outside of map: %s\n", ship);
 				cleanUp();
 				exit(EXIT_FAILURE);
 			}
-
-			int y1;
-			if((y1 = digitCharToInt(ship[1])) != -1){
-				//y1 tanimlandi.
-			}
-			else
-			{
-				fprintf(stderr, "ERROR: coordinates outside of map: %s\n", ship);
-				cleanUp();
-				exit(EXIT_FAILURE);
-			}
-			
-
-            //Stern(back)
-            int x2;
-            if ((x2 = getIntBetweenAandJ(ship[2])) != -1)
-            {
-                //x2 tanimlandi
-            }
-			else
-			{
-				fprintf(stderr, "ERROR: coordinates outside of map: %s\n", ship);
-				cleanUp();
-				exit(EXIT_FAILURE);
-			}
-
-			int y2;
-			if((y2 = digitCharToInt(ship[3])) != -1){
-				//y1 tanimlandi.
-			}
-			else
-			{
-				fprintf(stderr, "ERROR: coordinates outside of map: %s\n", ship);
-				cleanUp();
-				exit(EXIT_FAILURE);
-			}
-
             optind++;
         }
     }
     printf("SERVER port: %s\n", port);
 }
 
-void usage(void)
+static void usage(void)
 {
     fprintf(stderr, "Usage: %s [-p PORT] SHIP1 ...\n", prog_name);
     exit(EXIT_FAILURE);
 }
 
-void invalidShip(char *givenShip)
+static void invalidShip(char *givenShip)
 {
     fprintf(stderr, "Invalid ship: %s\n", givenShip);
     usage();
 }
 
 //char A - MAP_SIZE arasindaysa sayisi, diger her sey icin -1
-int getIntBetweenAandJ(char c)
+static int getIntBetweenAandJ(char c)
 {
     int x = -1;
     for (x = 0; x < MAP_SIZE; x++)
@@ -261,7 +218,7 @@ int getIntBetweenAandJ(char c)
 }
 
 //char 0-MAP_SIZE arasindaysa sayisi, diger her sey icin -1
-int digitCharToInt(char c)
+static int digitCharToInt(char c)
 {
     int x = -1;
     for (x = 0; x < MAP_SIZE; x++)
@@ -296,7 +253,7 @@ struct shipsType4
     struct shipdata d[SHIP_CNT_LEN4];
 };
 
-int prepareSocketAndGetConnfd(void) {
+static int prepareSocketAndGetConnfd(void) {
 
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
