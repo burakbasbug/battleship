@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 	}
 	printf("GAME IS STARTING...\n");
 //1 yap
-    for (int roundNr = 78; roundNr <= MAX_ROUNDS; roundNr++)
+    for (int roundNr = 79; roundNr <= MAX_ROUNDS; roundNr++)
     {
 		
         /*
@@ -95,13 +95,15 @@ int main(int argc, char *argv[])
 		 * client
 		 */
 		//
-		uint8_t buf[1]; //fixed width int type: char (unsigned), 8 bit
-		if((recv(connfd, buf, sizeof(uint8_t), MSG_WAITALL) ) < 0){
-			printf("sth wrong\n");
-		}
-		uint8_t firstPart = buf[0];
-		printf("\tMSG: x: %x, d: %d\n", firstPart, firstPart);
 
+
+        uint8_t buf[sizeof(int)];
+        recv(connfd, buf, sizeof(int), MSG_WAITALL);
+        int i = 0;
+        int pos;
+        for (pos = 0; pos < sizeof(int); pos++)
+            i |= (int)buf[pos] << 8 * pos;
+        printf("\tMSG: x: %x, d: %d\n", i, i);
 
 		
     }

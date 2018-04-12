@@ -91,13 +91,17 @@ int main(int argc, char *argv[])
 }
 
 static void sendGuess(uint16_t guess){
-    uint16_t buf[1]; //1 tane 8bitlik sayi alan buffer (16 bit 2ye bölünecek)
+    //uint16_t buf[1]; //1 tane 8bitlik sayi alan buffer (16 bit 2ye bölünecek)
     // Guess su an 16 bit, 8 8 ikiye ayirip önce ilk kismi sonra ikinci kismi.
     uint8_t first8bits = 0x0 | guess; // 0000 0000
-    buf[0] = first8bits;
-    if(send(sockfd, buf, sizeof(uint8_t), 0) < 0){
-        fprintf(stderr, "send failed: %s\n", strerror(errno));
-    }
+    //buf[0] = first8bits;
+    
+    int i = first8bits;
+    uint8_t buf[sizeof(int)];
+    int pos;
+    for (pos = 0; pos < sizeof(int); pos++)
+        buf[pos] = i >> 8 * pos;
+    write(sockfd, buf, sizeof(int));
     
     
     // paritybit 0 0 0 x(6 bits) y(6 bits)
@@ -110,10 +114,10 @@ static void sendGuess(uint16_t guess){
     //printf("Parity Bit will be: %s, because number of 1s in %d is %d.\n", parityBit%2 == 0 ? "0" : "1", guess, counterFor1s);
     uint8_t second8bitsWithParity = 0xFF & (guess >> 8);
     printf("second part: %d\n", second8bitsWithParity);
-    buf[0] = second8bitsWithParity;
-    if(send(sockfd, buf, sizeof(uint8_t), 0) < 0){
-        fprintf(stderr, "send failed: %s\n", strerror(errno));
-    }
+    i = second8bitsWithParity;
+    for (pos = 0; pos < sizeof(int); pos++)
+        buf[pos] = i >> 8 * pos;
+    write(sockfd, buf, sizeof(int));
 }
 
 static uint16_t makeGuess(void)
